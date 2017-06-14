@@ -1,0 +1,9 @@
+db.createCollection('orcs');
+db.orcs.insertMany([
+    { clan: 'Black wolfs', name: 'Lib', kills: 4},
+    { clan: 'Black wolfs', name: 'Mogka', kills: 13},
+    { clan: 'Red orcs', name: 'Aop', kills: 6},
+    { clan: 'Red orcs', name: 'Igra', kills: 3},
+    { clan: 'Pirates', name: 'Bale', kills: 4},
+    { clan: 'Red orcs', name: 'Nikfara', kills: 13}
+]);

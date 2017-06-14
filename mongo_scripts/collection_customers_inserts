@@ -1,0 +1,7 @@
+db.createCollection('customers');
+db.customers.insert([
+    {name:'Ivan', age:30},
+    {name:'Misho', age:21}, 
+    {name:'Asen1', age:13},
+    {name:'Asen2', age:13}
+])
