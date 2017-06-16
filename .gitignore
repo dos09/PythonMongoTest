@@ -1,2 +1,5 @@
 .project
 .pydevproject
+.cache/
+__pycache__/
+temp_backup

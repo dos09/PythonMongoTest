@@ -1,0 +1,5 @@
+#
+Some documents have ip_int fields missing or with string types.
+Each document must have ip_int field of numeric type.
+#
+Find the documents with private ips and delete them
