@@ -57,7 +57,7 @@ class DBConnector(object):
         self.db = client.mytest
     
     def delete_data(self):
-        # return  # for safety ###################################################
+        # return  # for safety ################################################
         print('delete data called')
         """Returns the count of deleted documents"""
         bulk = self.db.ip.initialize_ordered_bulk_op()
@@ -67,7 +67,8 @@ class DBConnector(object):
     def insert_data(self, data_generator):
         """Returns the count of inserted documents"""
         if(not(isinstance(data_generator, RandomDataGenerator))):
-            raise ValueError('data_generator must be an instance of RandomDataGenerator')
+            raise ValueError('data_generator must be an instance'
+                             'of RandomDataGenerator')
         
         bulk = self.db.ip.initialize_ordered_bulk_op()
         for doc in data_generator.generate_data():
@@ -75,7 +76,7 @@ class DBConnector(object):
         return bulk.execute()['nInserted']
 
     def refresh_ip_collection(self, data_generator):
-        self.delete_data()  # if must be used remove the return from the beginning
+        self.delete_data()  # if must be used remove the return from first line
         self.insert_data(data_generator)
     
     def fix_data(self):
@@ -86,7 +87,7 @@ class DBConnector(object):
             {
                 '$or':
                 [
-                    { 'ip_int': { '$type': 'string' } },
+                    { 'ip_int': { '$type': 2 } }, # 'string'
                     { 'ip_int': { '$exists': False } }
                 ] 
             }):
@@ -98,14 +99,14 @@ class DBConnector(object):
                 { 
                     '$set': { 'ip_int': int(ipaddress.IPv4Address(doc['ip'])) } 
                 })
-        return (bulk.execute()['nModified'] if has_bad_data else -1)
+        return (bulk.execute()['nModified'] if has_bad_data else 0)
     
     def get_bad_data_count(self):
         return self.db.ip.find(
             { 
                 '$or':
                 [
-                    { 'ip_int': { '$type': 'string' } },
+                    { 'ip_int': { '$type': 2 } }, # 'string'
                     { 'ip_int': { '$exists': False } }
                 ] 
             }).count() 
@@ -152,18 +153,19 @@ class PrivateIPFinder(object):
         return { '$or': ip_int_filters }
     
     def get_wiki_filter(self):
-        return self._get_filter(wiki_private_networks)
+        return self._get_filter(self.wiki_private_networks)
     
     def get_python_filter(self):
-        return self._get_fitler(python_private_networks)
+        return self._get_fitler(self.python_private_networks)
     
-    def get_private_ips_count(self, connector, private_networks):
-        ip_int_filters = []
-        for net in private_networks:
-            net = ipaddress.IPv4Network(net)
-            ip_int_filters.append({ 'ip_int': {'$gte' : int(net[0]), '$lte' : int(net[-1]) } })
-            
-        return connector.db.ip.find({ '$or': ip_int_filters }).count()
+    def _get_private_ips_count(self, connector, private_networks):            
+        return connector.db.ip.find(self._get_filter(private_networks)).count()
+    
+    def get_private_ips_count_using_python_networks(self, connector):
+        return self._get_private_ips_count(connector, self.python_private_networks)
+    
+    def get_private_ips_count_using_wiki_networks(self, connector):
+        return self._get_private_ips_count(connector, self.wiki_private_networks)
     
     def _private_ip_statistics(self, connector, private_networks):
         ip_int_filters = []
@@ -180,19 +182,35 @@ class PrivateIPFinder(object):
                     break
         return network_statistics
     
-    def move_private_ips(self, connector):
-        for doc in connector.db.ip.find(self.get_wiki_filter()):
-            pass
-        # TODO: finish, check todo.txt
-    
     def private_ip_statistics_using_python_networks(self, connector):
         return self._private_ip_statistics(connector, self.python_private_networks)
     
     def private_ip_statistics_using_wiki_networks(self, connector):
         return self._private_ip_statistics(connector, self.wiki_private_networks)
     
-    
-    
+    def move_private_ips_using_wiki_networks(self, connector):
+        filter = self.get_wiki_filter()
+        bulk = connector.db.private_ips.initialize_ordered_bulk_op()
+        execute_bulk = False
+        for doc in connector.db.ip.find(filter):
+            execute_bulk = True
+            bulk.find(
+                {
+                    'ip': doc['ip']
+                }).upsert().update_one(
+                {
+                    '$set': doc
+                })
+        if execute_bulk:
+            result = bulk.execute()
+            print('moved %s docs' % (result['nUpserted']))
+        else:
+            print('nothing to move to private_ips')
+        bulk = connector.db.ip.initialize_ordered_bulk_op()
+        bulk.find(filter).remove()
+        result = bulk.execute()
+        print('deleted %s docs' % result['nRemoved'])
+
 class NetworkStatistics(object):
     def __init__(self, network):
         self.network = network
@@ -204,7 +222,7 @@ class NetworkStatistics(object):
         return "{0:20s}, times met: {1:7d}".format(str(self.network), self.times_met)        
 
 class Tester(object):
-    def test(self):
+    def test_fixing_data_has_bad_data(self):
         data_generator = RandomDataGenerator(count_of_docs=1000)
         connector = DBConnector()
         bad_docs_count = (data_generator.count_of_ip_int_strings + 
@@ -215,7 +233,21 @@ class Tester(object):
         assert connector.get_bad_data_count() == bad_docs_count
         assert connector.fix_data() == bad_docs_count
         assert connector.get_bad_data_count() == 0
-
+    def test_fixing_data_no_bad_data(self):
+        data_generator = RandomDataGenerator(count_of_docs=1000,
+                                             ip_int_strings_percent=0,
+                                             ip_int_missing_percent=0)
+        connector = DBConnector()
+        bad_docs_count = (data_generator.count_of_ip_int_strings + 
+                          data_generator.count_of_ip_int_missing)
+                
+        connector.delete_data()
+        assert bad_docs_count == 0
+        assert connector.insert_data(data_generator) == data_generator.count_of_docs
+        assert connector.get_bad_data_count() == bad_docs_count
+        assert connector.fix_data() == 0
+        assert connector.get_bad_data_count() == 0
+    
 def print_statistics():
     connector = DBConnector()
     ip_finder = PrivateIPFinder()
@@ -233,40 +265,18 @@ def write_python_statistics_in_db():
     connector = DBConnector()
     ip_finder = PrivateIPFinder()
     net_stat_python = ip_finder.private_ip_statistics_using_python_networks(connector)
-    # delete statistics collection
-    bulk = connector.db.python_privates.initialize_ordered_bulk_op()
-    bulk.find({}).remove()
-    bulk.execute()
-    # insert
+    # update
     bulk = connector.db.python_privates.initialize_ordered_bulk_op()
     for net in net_stat_python:
-        bulk.insert({
-            'network':str(net.network),
-            'ip_int_min':net.ip_int_min,
-            'ip_int_max':net.ip_int_max,
-            'times_met':net.times_met
-            })
-    bulk.execute()
-    print('done writing')
-    
-def DONTUSE_write_wiki_statistics_in_db():
-    print('writing statistics for private ips using wiki\'s private networks...')
-    connector = DBConnector()
-    ip_finder = PrivateIPFinder()
-    net_stat_wiki = ip_finder.private_ip_statistics_using_wiki_networks(connector)
-    # delete statistics collection
-    bulk = connector.db.wiki_privates.initialize_ordered_bulk_op()
-    bulk.find({}).remove()
-    bulk.execute()
-    # insert
-    bulk = connector.db.wiki_privates.initialize_ordered_bulk_op()
-    for net in net_stat_wiki:
-        bulk.insert({
-            'network':str(net.network),
-            'ip_int_min':net.ip_int_min,
-            'ip_int_max':net.ip_int_max,
-            'times_met':net.times_met
-            })
+        bulk.find({'network':str(net.network)}).upsert().update_one(
+            {'$set':
+                {
+                    'network':str(net.network),
+                    'ip_int_min':net.ip_int_min,
+                    'ip_int_max':net.ip_int_max,
+                    'times_met':net.times_met
+                } 
+            } )
     bulk.execute()
     print('done writing')
 
@@ -290,37 +300,44 @@ def write_wiki_statistics_in_db():
     bulk.execute()
     print('done writing')
 
-def copy_test():
-    connector = DBConnector()
-    bulk = connector.db.tralala.initialize_ordered_bulk_op()
-    for doc in connector.db.ip.find({}):
-        print(doc)
-        bulk.insert(doc)
-        break
-     
-    bulk.execute()
-
 # Statistics
 # print_statistics()
 # write_python_statistics_in_db()
-# write_wiki_statistics_in_db()
+# write_wiki_statistics_in_db()    
+
 
 connector = DBConnector()
-ip_finder = PrivateIPFinder()    
-# print('python privates count:', ip_finder.get_private_ips_count(connector, ip_finder.python_private_networks))
-# print('wiki privates count:', ip_finder.get_private_ips_count(connector, ip_finder.wiki_private_networks))
-#################################################################
-# data_generator = RandomDataGenerator(count_of_docs=50000)
-# bad_docs_count = (data_generator.count_of_ip_int_strings + 
-#                   data_generator.count_of_ip_int_missing)
-#   
-# connector.delete_data()
-# connector.insert_data(data_generator)
-# start_time = time.time()
-# fixed_docs_count = connector.fix_data()
-# end_time = time.time()        
-# print('bad docs:', bad_docs_count)
-# print('fixed docs:', fixed_docs_count)
-# print('fix time:', end_time - start_time, 'seconds')
-#################################################################
+data_generator = RandomDataGenerator(count_of_docs=100000,
+                                     ip_int_strings_percent=0,
+                                     ip_int_missing_percent=0)
+ip_finder = PrivateIPFinder()
+# generate data and fix ip_int field ##########################################
+bad_docs_count = (data_generator.count_of_ip_int_strings + 
+                  data_generator.count_of_ip_int_missing)
+
+print('deleting data...')
+start_time = time.time()
+connector.delete_data()
+print('deletion:', time.time() - start_time, 'seconds')
+
+print('inserting data...')
+start_time = time.time()
+connector.insert_data(data_generator)
+print('insertion:', time.time() - start_time, 'seconds')
+
+print('fixing data...')
+start_time = time.time()
+fixed_docs_count = connector.fix_data()
+print('fixing:', time.time() - start_time, 'seconds')
+
+print('bad docs:', bad_docs_count)
+print('fixed docs:', fixed_docs_count)
+# private ips logic ###########################################################
+# print_statistics()
+# print('private ips (using python\'s networks):', 
+#       ip_finder.get_private_ips_count_using_python_networks(connector))
+# print('private ips (using wiki\'s networks):', 
+#       ip_finder.get_private_ips_count_using_wiki_networks(connector))
+# ip_finder.move_private_ips_using_wiki_networks(connector)
+###############################################################################
 # print('bad docs in collection:',connector.get_bad_data_count())

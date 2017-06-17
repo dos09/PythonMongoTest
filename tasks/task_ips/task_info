@@ -2,4 +2,5 @@
 Some documents have ip_int fields missing or with string types.
 Each document must have ip_int field of numeric type.
 #
-Find the documents with private ips and delete them
+Find the documents with private ips, 
+move them to another collection and delete them from the current collection
