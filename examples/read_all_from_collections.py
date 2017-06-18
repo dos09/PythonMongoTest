@@ -8,7 +8,7 @@ print("sys.prefix: " + sys.prefix)
 #client = MongoClient('localhost', 27017)
 client = MongoClient('mongodb://localhost:27017')
 # db = client["mytest"] 
-db =  client.mytest# if the database doesn't exist it is automatically specified
+db =  client.mytest # if the database doesn't exist it is automatically created
 # db.customers
 # db['customers']
 for doc in db.customers.find():
