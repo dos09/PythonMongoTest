@@ -158,6 +158,11 @@ if __name__ == '__main__':
     @click.pass_context
     def fix_data(ctx):
         print('fixed', ctx.obj['db_connector'].fix_data(), 'documents')
+        
+    @cli.command()
+    @click.pass_context
+    def count_all(ctx):
+        print('count:', ctx.obj['db_connector'].db.ip.find().count())
     
     @cli.command()
     @click.pass_context
@@ -166,6 +171,3 @@ if __name__ == '__main__':
         ip_finder.print_statistics(ctx.obj['db_connector'])
         
     cli(obj={})
-
-#     connector = DBConnector('mongodb://localhost:27017', 'mytest')
-#     print('fixed', connector.fix_data(), 'documents')
