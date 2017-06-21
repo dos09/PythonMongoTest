@@ -28,6 +28,6 @@ if __name__ == '__main__':
 # 2. activate your virtual environment and from the same terminal navigate to
 #     the directory with this script
 # 3. python script_name.py -c conf.properties
-#     Example conents for conf.properties:
+#     Example contents for conf.properties:
 #     db.m3.url = mongodb://127.0.0.1:27017
 #     db.m3.dbname = test
