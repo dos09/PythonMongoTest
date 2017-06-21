@@ -4,7 +4,7 @@ from ip_test_utils import DBConnectorTester
 
 def pytest_addoption(parser):
     parser.addoption("--mongo", default='mongodb://127.0.0.1:27017')
-    parser.addoption("--db", default='mytest')
+    parser.addoption("--db", default='test')
 
 
 @pytest.fixture(scope='session')

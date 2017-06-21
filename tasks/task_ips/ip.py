@@ -6,11 +6,11 @@ class DBConnector:
     def __init__(self, mongo_url, db_name):
         self.client = MongoClient(mongo_url)
         self.db = getattr(self.client, db_name)
-
+    
     def fix_data(self):
         """Returns the count of fixed documents or 0 if no bad data exists"""
-        bulk = self.db.ip.initialize_ordered_bulk_op()
-        has_bad_data = False
+        ips = []
+        failed_ips = []
         for doc in self.db.ip.find(
             {
                 '$or':
@@ -19,16 +19,51 @@ class DBConnector:
                     { 'ip_int': { '$exists': False } }
                 ]
             }):
-            has_bad_data = True
-            bulk.find(
-                {
-                    'ip': doc['ip']
-                }).update_one(
-                {
-                    '$set': { 'ip_int': int(ipaddress.IPv4Address(doc['ip'])) }
-                })
-        return (bulk.execute()['nModified'] if has_bad_data else 0)
-
+            ips.append(doc['ip'])
+        
+        fixed_count = 0
+        ips_len = len(ips)
+        
+        if ips:
+            max_doc_count = 5000
+            curr_doc_count = 0
+            bulk = self.db.ip.initialize_ordered_bulk_op()
+            
+            for ip_str in ips:
+                if curr_doc_count == max_doc_count:
+                    fixed_count += bulk.execute()['nModified']
+                    self._show_progress(fixed_count, ips_len)
+                    curr_doc_count = 0
+                    bulk = self.db.ip.initialize_ordered_bulk_op()
+                try:
+                    ip = ipaddress.IPv4Address(ip_str)
+                    bulk.find(
+                    {
+                        'ip': ip_str
+                    }).update_one(
+                    {
+                        '$set': { 'ip_int': int(ip) }
+                    })
+                    curr_doc_count += 1
+                except ipaddress.AddressValueError:
+                    failed_ips.append(ip_str)
+                    
+            if curr_doc_count > 0:    
+                fixed_count += bulk.execute()['nModified']
+                self._show_progress(fixed_count, ips_len)
+        
+        if failed_ips:
+            print('failed ips ({:,}):'.format(len(failed_ips)))
+            for ip in failed_ips:
+                print(ip)
+        
+        return fixed_count
+    
+    def _show_progress(self, fixed_count, all_count):
+        print('fixed %s of %s' % ('{:,}'.format(fixed_count), 
+                                  '{:,}'.format(all_count)))
+        
+    
 class NetworkStatistics:
     def __init__(self, network):
         self.network = network
@@ -148,7 +183,7 @@ if __name__ == '__main__':
                   default='mongodb://127.0.0.1:27017', 
                   help='mongo url (default is mongodb://127.0.0.1:27017)')
     @click.option('--db',
-                  default='mytest', 
+                  default='test', 
                   help='mongo db (default is test)')
     @click.pass_context
     def cli(ctx, mongourl, db):

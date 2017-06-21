@@ -1,0 +1,17 @@
+# run tests:
+
+pytest ip_test_utils.py --db mytest
+
+# options depends on pytest_addoption from conftest.py
+
+# run ip.py:
+
+python ip.py --mongourl "mongodb://localhost:27017" --db mytest count_all
+
+# or
+
+python ip.py count_all
+
+# can use different commands, to get help:
+
+python ip.py --help

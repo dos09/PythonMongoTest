@@ -115,6 +115,8 @@ class Tester:
         
         con_tester.delete_data()
         assert con_tester.insert_data(data_generator) == data_generator.count_of_docs
+        assert (data_generator.count_of_ip_int_strings +
+                data_generator.count_of_ip_int_missing) == con_tester.get_bad_data_count()
     
     @pytest.mark.skip
     def test_fixing_data_has_bad_data(self, db_connector):

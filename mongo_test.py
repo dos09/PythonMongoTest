@@ -1,6 +1,19 @@
-import pymongo
-from pymongo import MongoClient
 import ipaddress
 
-ip = '226.236.35.56'
-print(ip,'\n  ',int(ipaddress.IPv4Address(ip)))
+# ip_str = '2001:4801:7901:0:c5ce:526c:0:1a'
+# ip = ipaddress.IPv6Address(ip_str)
+# print(int(ip))
+# 42541948612144363323541006660294148122
+
+from pymongo import MongoClient
+
+client = MongoClient('mongodb://localhost:27017') 
+db =  client.mytest
+
+# db['tralala222'].update_one( {'_id': 123},
+#                              { '$set': {'name':'Natasha', 'age':25} }, 
+#                              upsert=True)
+# print(db['tralala222'].find().count())
+
+for doc in db.asd.find({}, { 'name': 1 }):
+    print(doc['name'])
