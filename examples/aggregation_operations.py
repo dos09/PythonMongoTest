@@ -2,7 +2,7 @@ import pymongo
 from pymongo import MongoClient
 
 def printCursorData(cursor, info=None):
-    if info != None:
+    if info is not None:
         print(info)
     for doc in cursor:
         print(doc)
