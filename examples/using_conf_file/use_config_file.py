@@ -10,7 +10,8 @@ import click
     help='config file')
 
 def main(config):    
-    print('main:', config) # prints the absolute path (because resolve_path is True)
+    # prints the absolute path (because resolve_path is True)
+    print('main:', config)
     xxx_props = XXXProperties(config)
     mongo_url = xxx_props['db.m3.url']
     db_name = xxx_props['db.m3.dbname']

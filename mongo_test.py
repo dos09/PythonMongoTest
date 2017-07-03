@@ -10,6 +10,15 @@ from pymongo import MongoClient
 client = MongoClient('mongodb://localhost:27017') 
 db =  client.mytest
 
+bulk = db.orcs.initialize_unordered_bulk_op()
+weps = ['1haxe', '2hsword'] # 'shield'
+bulk.find({'name':'Ra'}).upsert().update_one(
+    {
+        '$addToSet' : { 'weapons' : { '$each' : weps } }
+    }
+)
+bulk.execute()
+
 # db['tralala222'].update_one( {'_id': 123},
 #                              { '$set': {'name':'Natasha', 'age':25} }, 
 #                              upsert=True)
