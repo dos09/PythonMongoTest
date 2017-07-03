@@ -15,5 +15,26 @@ db =  client.mytest
 #                              upsert=True)
 # print(db['tralala222'].find().count())
 
-for doc in db.asd.find({}, { 'name': 1 }):
-    print(doc['name'])
+# for doc in db.asd.find({}, { 'name': 1 }):
+#     print(doc['name'])
+
+db = client.rimm
+i = 4
+default_attrs = {
+        '_id': 1,
+        'info.name': 1,
+        'data.ipAddresses': 1,
+        'data.macAddresses': 1
+    }
+
+vas = db.businessObjects.find({}, default_attrs)
+
+l = list(vas)
+for x in l:
+    print(x)
+
+# for doc in vas:
+#     print(doc)
+#     i -= 1
+#     if not i:
+#         break;
