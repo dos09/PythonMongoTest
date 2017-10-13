@@ -74,3 +74,6 @@ print("find_one(%s) returned: %s" % (filter, db.customers.find_one(filter)))
 # the only mix in projection possible is '_id':0 and some field(s) : 1
 print([doc for doc in db.customers.find({}, 
                                         {'name' : 1, '_id' : 0})])
+
+
+# db.tralala.replace_one({'num':3}, {'str':'chetiri', 'num': 4})
